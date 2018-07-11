@@ -42,6 +42,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <fcntl.h>
+
 using namespace std;
 using namespace std::chrono;
 
@@ -57,6 +59,11 @@ int main(int argc, char** argv) {
   auto file = fopen(argv[1], "rb");
   if (!file) {
     cout << strerror(errno) << endl;
+    return 1;
+  }
+
+  if (posix_fadvise(fileno(file), 0,0, POSIX_FADV_RANDOM) != 0) {
+    cout << "fadvise failed" << endl;
     return 1;
   }
 
