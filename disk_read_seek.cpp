@@ -39,10 +39,10 @@
 
 #include <chrono>
 #include <iostream>
-#include <stdio.h>
 #include <string.h>
 
 #include <fcntl.h>
+#include <unistd.h>
 
 using namespace std;
 using namespace std::chrono;
@@ -56,13 +56,13 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  auto file = fopen(argv[1], "rb");
-  if (!file) {
+  auto fd = open(argv[1], O_RDONLY);
+  if (fd == -1) {
     cout << strerror(errno) << endl;
     return 1;
   }
 
-  if (posix_fadvise(fileno(file), 0,0, POSIX_FADV_RANDOM) != 0) {
+  if (posix_fadvise(fd, 0,0, POSIX_FADV_RANDOM) != 0) {
     cout << "fadvise failed" << endl;
     return 1;
   }
@@ -73,19 +73,20 @@ int main(int argc, char** argv) {
 
   auto start = steady_clock::now();
 
-  while (fread(buffer, BUFFER_SIZE, 1, file) == 1) {
+  while (read(fd, buffer, BUFFER_SIZE) > 0) {
     ++count;
     // Use some part of the file.
     sum += *reinterpret_cast<uint64_t*>(buffer);
-    fseek(file, GAP_SIZE, SEEK_CUR);
+    lseek(fd, GAP_SIZE, SEEK_CUR);
   }
 
   auto end = steady_clock::now();
   auto elapsed_milliseconds = duration_cast<milliseconds>(end - start);
 
+  close(fd);
+
   cout << "# of reads: " << count << endl;
   cout << "Sum of reads: " << sum << endl;
   cout << "Elapsed milliseconds: " << elapsed_milliseconds.count() << endl;
 }
-
 
